@@ -1,0 +1,75 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  devsecops:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout del codice
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    # Step 2: Setup Node.js (per eseguire il progetto Juice Shop)
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    # Step 3: Installare le dipendenze di Juice Shop
+    - name: Install dependencies
+      run: npm install
+
+    # Step 4: Linting del codice (verifica qualità JS)
+    - name: Lint check
+      run: npm run lint
+
+    # Step 5: Verifica vulnerabilità nelle dipendenze (npm audit)
+    - name: Dependency vulnerabilities check
+      run: npm audit --audit-level=low
+
+    # Step 6: Static Application Security Testing (SAST) con Semgrep
+    - name: Static Analysis with Semgrep
+      uses: returntocorp/semgrep-action@v1
+
+    # Step 7: Ricerca di segreti nel codice con Gitleaks
+    - name: Secret Scan with Gitleaks
+      uses: gitleaks/gitleaks-action@v2
+      with:
+        args: --verbose
+
+    # Step 8: Scansione vulnerabilità immagini Docker con Trivy
+    - name: Docker Image vulnerability scan with Trivy
+      run: |
+        docker pull bkimminich/juice-shop
+        docker run --rm aquasec/trivy image bkimminich/juice-shop
+
+    # Step 9: Dynamic Application Security Testing (DAST) con OWASP ZAP
+    - name: Dynamic Analysis with OWASP ZAP
+      uses: zaproxy/action-baseline@v0.10.0
+      with:
+        target: 'http://juice-shop:3000'  # URL del tuo Juice Shop
+        fail-on-crash: true
+
+    # Step 10: Esegui l'analisi di sicurezza con SonarQube (opzionale)
+    - name: SonarQube Analysis
+      uses: sonarsource/sonarqube-scan-action@v1
+      with:
+        projectBaseDir: .
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: 'https://sonarcloud.io'
+
+    # Step 11: Carica i report generati come artefatti (facoltativo)
+    - name: Upload Reports
+      uses: actions/upload-artifact@v2
+      with:
+        name: devsecops-reports
+        path: reports/
