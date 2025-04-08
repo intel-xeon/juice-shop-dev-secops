@@ -1,0 +1,23 @@
+name: Dastardly Scan
+
+on:
+  workflow_dispatch:  # lo lanci manualmente quando vuoi
+
+jobs:
+  dastardly-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Dastardly Scan
+        uses: portswigger/dastardly-action@v1
+        with:
+          target-url: 'https://juice-shop.herokuapp.com/'
+
+      - name: Upload Dastardly Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dastardly-report
+          path: dastardly-report.html
